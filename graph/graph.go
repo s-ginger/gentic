@@ -69,3 +69,48 @@ func (g *Graph) Run(
 	return nil
 }
 
+
+func (g *Graph) Validate() error {
+	if g.entryPoint == "" {
+		return fmt.Errorf("entry point is not set")
+	}
+
+	if _, ok := g.nodes[g.entryPoint]; !ok {
+		return fmt.Errorf(
+			"entry point %q does not exist",
+			g.entryPoint,
+		)
+	}
+
+	for from, to := range g.edges {
+		if _, ok := g.nodes[from]; !ok {
+			return fmt.Errorf(
+				"edge source node %q does not exist",
+				from,
+			)
+		}
+
+		if to == End {
+			continue
+		}
+
+		if _, ok := g.nodes[to]; !ok {
+			return fmt.Errorf(
+				"edge from %q points to unknown node %q",
+				from,
+				to,
+			)
+		}
+	}
+
+	for from := range g.routes {
+		if _, ok := g.nodes[from]; !ok {
+			return fmt.Errorf(
+				"route source node %q does not exist",
+				from,
+			)
+		}
+	}
+
+	return nil
+}
