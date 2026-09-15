@@ -237,3 +237,33 @@ func TestGraphValidateUnknownEdgeTarget(t *testing.T) {
 		t.Fatal("expected validation error")
 	}
 }
+
+func TestGraphConditionalEdgeInvalidTarget(t *testing.T) {
+	graph := NewGraph()
+
+	graph.AddNode("router", func(
+		ctx context.Context,
+		state State,
+	) error {
+		return nil
+	})
+
+	graph.AddConditionalEdge(
+		"router",
+		[]string{"search", "answer"},
+		func(state State) string {
+			return "unknown"
+		},
+	)
+
+	graph.SetEntryPoint("router")
+
+	err := graph.Run(
+		context.Background(),
+		NewState(),
+	)
+
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
