@@ -29,10 +29,11 @@ func TestGraphRun(t *testing.T) {
 	})
 
 	graph.AddEdge("first", "second")
-
-	state := NewState()
+	graph.AddEdge("second", End)
 
 	graph.SetEntryPoint("first")
+
+	state := NewState()
 
 	err := graph.Run(
 		context.Background(),
@@ -111,6 +112,13 @@ func TestGraphConditionalEdge(t *testing.T) {
 		return nil
 	})
 
+	graph.AddNode("router", func(
+		ctx context.Context,
+		state State,
+	) error {
+		return nil
+	})
+
 	graph.AddNode("search", func(
 		ctx context.Context,
 		state State,
@@ -127,19 +135,31 @@ func TestGraphConditionalEdge(t *testing.T) {
 		return nil
 	})
 
-	graph.AddConditionalEdge("start", func(state State) string {
-		value, _ := state.Get("need_search")
+	graph.AddEdge("start", "router")
 
-		if value.(bool) {
-			return "search"
-		}
+	graph.AddConditionalEdge(
+		"router",
+		[]string{
+			"search",
+			"answer",
+		},
+		func(state State) string {
+			value, _ := state.Get("need_search")
 
-		return "answer"
-	})
+			if value.(bool) {
+				return "search"
+			}
 
-	state := NewState()
+			return "answer"
+		},
+	)
+
+	graph.AddEdge("search", End)
+	graph.AddEdge("answer", End)
 
 	graph.SetEntryPoint("start")
+
+	state := NewState()
 
 	err := graph.Run(
 		context.Background(),
@@ -158,5 +178,62 @@ func TestGraphConditionalEdge(t *testing.T) {
 
 	if value != "searched" {
 		t.Fatalf("expected searched, got %v", value)
+	}
+}
+func TestGraphValidate(t *testing.T) {
+	graph := NewGraph()
+
+	graph.AddNode("start", func(
+		ctx context.Context,
+		state State,
+	) error {
+		return nil
+	})
+
+	graph.AddNode("finish", func(
+		ctx context.Context,
+		state State,
+	) error {
+		return nil
+	})
+
+	graph.SetEntryPoint("start")
+	graph.AddEdge("start", "finish")
+	graph.AddEdge("finish", End)
+
+	err := graph.Validate()
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestGraphValidateWithoutEntryPoint(t *testing.T) {
+	graph := NewGraph()
+
+	err := graph.Validate()
+
+	if err == nil {
+		t.Fatal("expected validation error")
+	}
+}
+
+func TestGraphValidateUnknownEdgeTarget(t *testing.T) {
+	graph := NewGraph()
+
+	graph.AddNode("start", func(
+		ctx context.Context,
+		state State,
+	) error {
+		return nil
+	})
+
+	graph.SetEntryPoint("start")
+	graph.AddEdge("start", "unknown")
+
+	err := graph.Validate()
+
+	if err == nil {
+		t.Fatal("expected validation error")
 	}
 }

@@ -7,4 +7,7 @@ type Node func(
     state State,
 ) error
 
-type Route func(State) string
+type ConditionalEdge struct {
+	Targets []string
+	Route   func(State) string
+}

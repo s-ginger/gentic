@@ -1,8 +1,8 @@
 package graph
 
 import (
-    "context"
-    "fmt"
+	"context"
+	"fmt"
 )
 
 const (
@@ -11,31 +11,37 @@ const (
 )
 
 type Graph struct {
-	nodes  map[string]Node
-	edges  map[string]string
-	routes map[string]Route
-
-	entryPoint string
+	nodes            map[string]Node
+	edges            map[string]string
+	conditionalEdges map[string]ConditionalEdge
+	entryPoint       string
 }
 
 func NewGraph() *Graph {
 	return &Graph{
-		nodes:  make(map[string]Node),
-		edges:  make(map[string]string),
-		routes: make(map[string]Route),
+		nodes:            make(map[string]Node),
+		edges:            make(map[string]string),
+		conditionalEdges: make(map[string]ConditionalEdge),
 	}
 }
 
 func (g *Graph) AddNode(name string, node Node) {
-    g.nodes[name] = node
+	g.nodes[name] = node
 }
 
 func (g *Graph) AddEdge(from string, to string) {
-    g.edges[from] = to
+	g.edges[from] = to
 }
 
-func (g *Graph) AddConditionalEdge(from string, route Route) {
-	g.routes[from] = route
+func (g *Graph) AddConditionalEdge(
+	from string,
+	targets []string,
+	route func(State) string,
+) {
+	g.conditionalEdges[from] = ConditionalEdge{
+		Targets: targets,
+		Route:   route,
+	}
 }
 
 func (g *Graph) SetEntryPoint(name string) {
@@ -46,9 +52,13 @@ func (g *Graph) Run(
 	ctx context.Context,
 	state State,
 ) error {
+	if err := g.Validate(); err != nil {
+		return err
+	}
+
 	current := g.entryPoint
 
-	for current != "" && current != End {
+	for current != End {
 		node, ok := g.nodes[current]
 		if !ok {
 			return fmt.Errorf("node %q not found", current)
@@ -58,8 +68,8 @@ func (g *Graph) Run(
 			return err
 		}
 
-		if route, ok := g.routes[current]; ok {
-			current = route(state)
+		if edge, ok := g.conditionalEdges[current]; ok {
+			current = edge.Route(state)
 			continue
 		}
 
@@ -68,7 +78,6 @@ func (g *Graph) Run(
 
 	return nil
 }
-
 
 func (g *Graph) Validate() error {
 	if g.entryPoint == "" {
@@ -103,12 +112,26 @@ func (g *Graph) Validate() error {
 		}
 	}
 
-	for from := range g.routes {
+	for from, edge := range g.conditionalEdges {
 		if _, ok := g.nodes[from]; !ok {
 			return fmt.Errorf(
-				"route source node %q does not exist",
+				"conditional edge source node %q does not exist",
 				from,
 			)
+		}
+
+		for _, target := range edge.Targets {
+			if target == End {
+				continue
+			}
+
+			if _, ok := g.nodes[target]; !ok {
+				return fmt.Errorf(
+					"conditional edge from %q points to unknown node %q",
+					from,
+					target,
+				)
+			}
 		}
 	}
 
