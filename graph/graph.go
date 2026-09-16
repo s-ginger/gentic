@@ -3,6 +3,8 @@ package graph
 import (
 	"context"
 	"fmt"
+
+	"github.com/s-ginger/gentic/logger"
 )
 
 const (
@@ -15,6 +17,7 @@ type Graph struct {
 	edges            map[string]string
 	conditionalEdges map[string]ConditionalEdge
 	entryPoint       string
+	logger logger.Logger
 }
 
 func NewGraph() *Graph {
@@ -23,6 +26,10 @@ func NewGraph() *Graph {
 		edges:            make(map[string]string),
 		conditionalEdges: make(map[string]ConditionalEdge),
 	}
+}
+
+func (g *Graph) SetLogger(logger logger.Logger) {
+	g.logger = logger
 }
 
 func (g *Graph) AddNode(name string, node Node) {
