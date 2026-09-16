@@ -3,7 +3,7 @@ package llm
 import (
 	"context"
 	"fmt"
-	"github.com/s-ginger/gentic/graph"
+	"github.com/hamsters/gentic/graph"
 )
 
 type Request struct {

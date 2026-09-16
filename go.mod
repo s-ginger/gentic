@@ -1,3 +1,3 @@
-module github.com/s-ginger/gentic
+module github.com/hamsters/gentic
 
 go 1.25.0
