@@ -244,7 +244,7 @@ aigraph/
 * [x] Regular edges
 * [x] Conditional edges
 * [x] START / END
-* [ ] Graph validation
+* [x] Graph validation
 * [ ] Maximum execution steps
 * [ ] Context cancellation
 * [ ] Execution result
@@ -261,11 +261,11 @@ aigraph/
 
 ### AI
 
-* [ ] LLM interface
-* [ ] Message abstraction
-* [ ] Tool interface
+* [x] LLM interface
+* [x] Message abstraction
+* [x] Tool interface
 * [ ] Tool calling
-* [ ] Agent nodes
+* [x] Agent nodes
 * [ ] Streaming
 
 ### Persistence
