@@ -2,7 +2,7 @@ package llm
 
 import (
 	"context"
-	"gentic/graph"
+	"github.com/s-ginger/gentic/graph"
 	"testing"
 )
 
