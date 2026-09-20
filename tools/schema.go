@@ -1,4 +1,4 @@
-package tool
+package tools
 
 // Schema describes the input expected by a Tool.
 //

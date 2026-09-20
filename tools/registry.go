@@ -1,4 +1,4 @@
-package tool
+package tools
 
 // Registry stores tools by name.
 type Registry map[string]Tool
