@@ -3,8 +3,6 @@ package graph
 import (
 	"context"
 	"fmt"
-
-	"github.com/s-ginger/gentic/logger"
 )
 
 const (
@@ -17,7 +15,8 @@ type Graph struct {
 	edges            map[string]string
 	conditionalEdges map[string]ConditionalEdge
 	entryPoint       string
-	logger logger.Logger
+
+	hooks []Hook
 }
 
 func NewGraph() *Graph {
@@ -28,8 +27,11 @@ func NewGraph() *Graph {
 	}
 }
 
-func (g *Graph) SetLogger(logger logger.Logger) {
-	g.logger = logger
+// Use adds one or more hooks to the graph.
+//
+// Hooks execute in the order they were added.
+func (g *Graph) Use(hooks ...Hook) {
+	g.hooks = append(g.hooks, hooks...)
 }
 
 func (g *Graph) AddNode(name string, node Node) {
@@ -63,15 +65,62 @@ func (g *Graph) Run(
 		return err
 	}
 
+	run := RunContext{
+		State: state,
+	}
+
+	if err := g.runBeforeRun(ctx, run); err != nil {
+		return err
+	}
+
 	current := g.entryPoint
 
 	for current != End {
 		node, ok := g.nodes[current]
 		if !ok {
-			return fmt.Errorf("node %q not found", current)
+			err := fmt.Errorf("node %q not found", current)
+
+			g.runError(ctx, ErrorContext{
+				Node:  current,
+				State: state,
+				Err:   err,
+			})
+
+			return err
+		}
+
+		nodeContext := NodeContext{
+			Name:  current,
+			State: state,
+		}
+
+		if err := g.runBeforeNode(ctx, nodeContext); err != nil {
+			g.runError(ctx, ErrorContext{
+				Node:  current,
+				State: state,
+				Err:   err,
+			})
+
+			return err
 		}
 
 		if err := node(ctx, state); err != nil {
+			g.runError(ctx, ErrorContext{
+				Node:  current,
+				State: state,
+				Err:   err,
+			})
+
+			return err
+		}
+
+		if err := g.runAfterNode(ctx, nodeContext); err != nil {
+			g.runError(ctx, ErrorContext{
+				Node:  current,
+				State: state,
+				Err:   err,
+			})
+
 			return err
 		}
 
@@ -83,7 +132,87 @@ func (g *Graph) Run(
 		current = g.edges[current]
 	}
 
+	if err := g.runAfterRun(ctx, run); err != nil {
+		g.runError(ctx, ErrorContext{
+			State: state,
+			Err:   err,
+		})
+
+		return err
+	}
+
 	return nil
+}
+
+func (g *Graph) runBeforeRun(
+	ctx context.Context,
+	run RunContext,
+) error {
+	for _, hook := range g.hooks {
+		if h, ok := hook.(BeforeRunHook); ok {
+			if err := h.BeforeRun(ctx, run); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (g *Graph) runAfterRun(
+	ctx context.Context,
+	run RunContext,
+) error {
+	for _, hook := range g.hooks {
+		if h, ok := hook.(AfterRunHook); ok {
+			if err := h.AfterRun(ctx, run); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (g *Graph) runBeforeNode(
+	ctx context.Context,
+	node NodeContext,
+) error {
+	for _, hook := range g.hooks {
+		if h, ok := hook.(BeforeNodeHook); ok {
+			if err := h.BeforeNode(ctx, node); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (g *Graph) runAfterNode(
+	ctx context.Context,
+	node NodeContext,
+) error {
+	for _, hook := range g.hooks {
+		if h, ok := hook.(AfterNodeHook); ok {
+			if err := h.AfterNode(ctx, node); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (g *Graph) runError(
+	ctx context.Context,
+	errContext ErrorContext,
+) {
+	for _, hook := range g.hooks {
+		if h, ok := hook.(ErrorHook); ok {
+			h.OnError(ctx, errContext)
+		}
+	}
 }
 
 func (g *Graph) Validate() error {
